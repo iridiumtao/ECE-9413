@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import jax
 jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
 
 
 # -----------------------------------------------------------------------------
@@ -18,17 +19,26 @@ jax.config.update("jax_enable_x64", True)
 
 def mod_add_32(a, b, q):
     """Return (a + b) mod q for the 32-bit track."""
-    raise NotImplementedError
+    a64 = jnp.asarray(a, dtype=jnp.uint64)
+    b64 = jnp.asarray(b, dtype=jnp.uint64)
+    q64 = jnp.asarray(q, dtype=jnp.uint64)
+    return jnp.asarray((a64 + b64) % q64, dtype=jnp.uint32)
 
 
 def mod_sub_32(a, b, q):
     """Return (a - b) mod q for the 32-bit track."""
-    raise NotImplementedError
+    a64 = jnp.asarray(a, dtype=jnp.uint64)
+    b64 = jnp.asarray(b, dtype=jnp.uint64)
+    q64 = jnp.asarray(q, dtype=jnp.uint64)
+    return jnp.asarray((a64 + q64 - b64) % q64, dtype=jnp.uint32)
 
 
 def mod_mul_32(a, b, q):
     """Return (a * b) mod q for the 32-bit track."""
-    raise NotImplementedError
+    a64 = jnp.asarray(a, dtype=jnp.uint64)
+    b64 = jnp.asarray(b, dtype=jnp.uint64)
+    q64 = jnp.asarray(q, dtype=jnp.uint64)
+    return jnp.asarray((a64 * b64) % q64, dtype=jnp.uint32)
 
 
 # -----------------------------------------------------------------------------
