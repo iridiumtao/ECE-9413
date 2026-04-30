@@ -11,9 +11,10 @@ See: `.planning/PROJECT.md` (updated 2026-04-30)
 
 **Phase 1: Primitives + MLE Update**
 
-Status: Not started
+Status: Context gathered
 
 Next action: Run `/gsd-plan-phase 1` to create the execution plan.
+Resume file: `.planning/phases/01-primitives-mle-update/01-CONTEXT.md`
 
 ## Phase Progress
 
