@@ -34,7 +34,7 @@
 **Plans:** 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Implement 4 primitives (mod_add_32, mod_sub_32, mod_mul_32, mle_update_32) and verify with vars4 edge-case tests
+- [x] 01-01-PLAN.md — Implement 4 primitives (mod_add_32, mod_sub_32, mod_mul_32, mle_update_32) and verify with vars4 edge-case tests (completed 2026-04-30, commits 2f4629b 2590640)
 
 **UI hint:** no
 
