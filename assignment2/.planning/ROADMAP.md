@@ -31,6 +31,11 @@
 3. `mod_mul_32(a, b, q)` correctly computes `(q-1)*(q-1) % q` without overflow.
 4. `mle_update_32` folds a table of length `2^k` to `2^(k-1)` using the given challenge `r`.
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 01-01-PLAN.md — Implement 4 primitives (mod_add_32, mod_sub_32, mod_mul_32, mle_update_32) and verify with vars4 edge-case tests
+
 **UI hint:** no
 
 ---
