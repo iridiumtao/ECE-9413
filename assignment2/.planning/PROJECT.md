@@ -17,12 +17,10 @@ Correctly produce `(claim0, round_evals)` that passes the harness for all requir
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] `mod_add_32 / mod_sub_32 / mod_mul_32` — correct modular arithmetic over 32-bit primes (Validated in Phase 1: Primitives + MLE Update, 30/30 tests pass)
+- [x] `mle_update_32` — linear interpolation that folds one Boolean variable in an MLE table (Validated in Phase 1: textbook example F_17 confirmed)
 
 ### Active
-
-- [ ] `mod_add_32 / mod_sub_32 / mod_mul_32` — correct modular arithmetic over 32-bit primes
-- [ ] `mle_update_32` — linear interpolation that folds one Boolean variable in an MLE table
 - [ ] `sumcheck_32` — full prover loop: computes round evaluations and initial claim
 - [ ] Pass all required 32-bit tests (vars4, vars16, vars20) for base polynomials
 - [ ] Produce required benchmark results (vars4, vars16, vars20)
@@ -65,9 +63,12 @@ Correctly produce `(claim0, round_evals)` that passes the harness for all requir
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use uint64 intermediate for mod_mul_32 | 32-bit × 32-bit can overflow uint32 — need wider accumulator | — Pending |
-| vmap over table entries within a round | Parallelise the inner-loop work that is independent across table indices | — Pending |
-| Correctness-first, then jit | Easier to debug before adding jit/vmap; avoid retracing issues | — Pending |
+| Use uint64 intermediate for all 32-bit arithmetic | 32-bit × 32-bit can overflow uint32; sum of two (q-1) values also overflows — wider accumulator required | Applied in Phase 1 (D-01) |
+| mod_sub_32 uses (a+q-b) not (a-b+q) | (a-b) as uint64 underflows to ~2^64 when b > a; adding q first keeps the intermediate positive | Applied in Phase 1 (D-02) |
+| mle_update_32 composes three primitives | Reusing mod_sub/mul/add avoids duplicating uint64 promotion logic | Applied in Phase 1 (D-03) |
+| No jax.vmap in mle_update_32 | JAX/XLA already broadcasts array operations; vmap adds overhead with no benefit | Applied in Phase 1 |
+| vmap over table entries within a round | Parallelise the inner-loop work that is independent across table indices | — Pending (Phase 2) |
+| Correctness-first, then jit | Easier to debug before adding jit/vmap; avoid retracing issues | — Pending (Phase 3) |
 
 ## Evolution
 
@@ -87,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-30 after initialization*
+*Last updated: 2026-04-30 — Phase 1 complete*
