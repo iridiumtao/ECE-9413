@@ -120,8 +120,16 @@ def mod_mul(a, b, q, *, bit_width=32):
 
 
 def mle_update_32(zero_eval, one_eval, target_eval, *, q):
-    """Compulsory 32-bit MLE update."""
-    raise NotImplementedError
+    """Compulsory 32-bit MLE update.
+
+    Linear interpolation: result = zero_eval + target_eval * (one_eval - zero_eval) mod q.
+    Composed from mod_sub_32, mod_mul_32, mod_add_32 — each handles its own overflow
+    and underflow safety via uint64 promotion. Plain array operations broadcast across
+    array zero_eval / one_eval inputs and a scalar target_eval challenge.
+    """
+    diff = mod_sub_32(one_eval, zero_eval, q)        # (one - zero) mod q
+    scaled = mod_mul_32(target_eval, diff, q)         # target * (one - zero) mod q
+    return mod_add_32(zero_eval, scaled, q)           # zero + target * (one - zero) mod q
 
 
 def mle_update_64(zero_eval, one_eval, target_eval, *, q):
