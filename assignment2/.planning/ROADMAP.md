@@ -69,6 +69,11 @@ Plans:
    uv run pytest --bits 32 --num-vars 20
    ```
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 02-01-PLAN.md — Implement sumcheck_32 (full prover loop) and verify with staged tests (vars4 → vars16 → vars20)
+
 **UI hint:** no
 
 ---
