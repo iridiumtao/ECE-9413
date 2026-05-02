@@ -72,7 +72,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md — Implement sumcheck_32 (full prover loop) and verify with staged tests (vars4 → vars16 → vars20)
+- [x] 02-01-PLAN.md — Implement sumcheck_32 (full prover loop) and verify with staged tests (vars4 → vars16 → vars20) (completed 2026-05-02, commits 4950a64 a6c3e50)
 
 **UI hint:** no
 
