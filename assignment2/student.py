@@ -156,7 +156,60 @@ def mle_update(zero_eval, one_eval, target_eval, *, q, bit_width=32):
 
 def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
     """Compulsory 32-bit sumcheck path."""
-    raise NotImplementedError
+    degree = max(len(term) for term in expression)
+
+    tables = {var: jnp.asarray(table, dtype=jnp.uint32)
+              for var, table in eval_tables.items()}
+
+    round_evals_list = []
+
+    for i in range(num_rounds):
+        g_i_evals = []
+
+        for v in range(degree + 1):
+            v_scalar = jnp.asarray(v, dtype=jnp.uint32)
+            g_i_at_v = jnp.asarray(0, dtype=jnp.uint64)
+
+            for term in expression:
+                first_var = term[0]
+                term_product = mle_update_32(
+                    tables[first_var][::2],
+                    tables[first_var][1::2],
+                    v_scalar,
+                    q=q,
+                )
+
+                for var in term[1:]:
+                    factor = mle_update_32(
+                        tables[var][::2],
+                        tables[var][1::2],
+                        v_scalar,
+                        q=q,
+                    )
+                    term_product = mod_mul_32(term_product, factor, q)
+
+                # Safe uint64 sum: up to 2^20 entries, each < q < 2^32, sum < 2^52 < 2^64.
+                term_sum = jnp.sum(term_product.astype(jnp.uint64)) % jnp.asarray(q, dtype=jnp.uint64)
+                g_i_at_v = (g_i_at_v + term_sum) % jnp.asarray(q, dtype=jnp.uint64)
+
+            g_i_evals.append(jnp.asarray(g_i_at_v, dtype=jnp.uint32))
+
+        round_evals_list.append(jnp.stack(g_i_evals))
+
+        # Fold all tables using challenges[i]; skip fold on the last round.
+        if i < len(challenges):
+            r = challenges[i]
+            tables = {
+                var: mle_update_32(tbl[::2], tbl[1::2], r, q=q)
+                for var, tbl in tables.items()
+            }
+
+    round_evals = jnp.stack(round_evals_list)
+
+    # claim0 = g_0(0) + g_0(1) mod q (D-04).
+    claim0 = mod_add_32(round_evals_list[0][0], round_evals_list[0][1], q)
+
+    return claim0, round_evals
 
 
 def sumcheck_64(eval_tables, *, q, expression, challenges, num_rounds):
