@@ -8,6 +8,8 @@ Only 32-bit kernels are compulsory in the base track.
 
 from __future__ import annotations
 
+import functools
+
 import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
@@ -154,6 +156,7 @@ def mle_update(zero_eval, one_eval, target_eval, *, q, bit_width=32):
     raise ValueError(f"Unsupported bit_width={bit_width}")
 
 
+@functools.partial(jax.jit, static_argnames=("expression", "num_rounds"))
 def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
     """Compulsory 32-bit sumcheck path."""
     degree = max(len(term) for term in expression)
@@ -226,6 +229,8 @@ def sumcheck_128(eval_tables, *, q, expression, challenges, num_rounds):
 
 def sumcheck(eval_tables, *, q, expression, challenges, num_rounds, bit_width=32):
     """Frozen dispatcher entrypoint used by the harness."""
+    # Convert expression to tuple-of-tuples so it is hashable as a JIT static arg.
+    expression = tuple(tuple(term) for term in expression)
     if int(bit_width) == 32:
         return sumcheck_32(
             eval_tables,
