@@ -1,6 +1,6 @@
 # Roadmap: ECE-9413 Assignment 2 — SumCheck Prover
 
-**3 phases** | **15 v1 requirements** | All requirements covered ✓
+**3 phases** | **15 v1 requirements + 2 extended** | All requirements covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|-----------------|
@@ -152,6 +152,22 @@ Plans:
 
 **Cross-cutting constraints:**
 - All 51 vars4 tests must pass after each code change before running benchmarks (D-07)
+
+---
+
+### Phase 5: GPU Benchmarking with Modal
+
+**Goal:** Port the benchmark harness to Modal so every experiment in `experiment.md` can be re-run on real GPU hardware; record GPU results in `experiment_gpu.md` with matching git hash tracking for reproducibility.
+**Requirements:** GPU-01, GPU-02, PERF-02
+**Depends on:** Phase 4
+**Plans:** 2 plans
+
+Plans:
+**Wave 1**
+- [ ] 05-01-PLAN.md — Create `modal_run.py` (app=ece9413-sumcheck, jax[cuda12], T4/A100/H100 GPU tiers, all three num-vars tiers per run) (GPU-01, PERF-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 05-02-PLAN.md — Checkout each git hash, run modal_run.py, record GPU output, write experiment_gpu.md with CPU vs GPU delta tables (GPU-02, PERF-02)
 
 ---
 *Roadmap created: 2026-04-30*
