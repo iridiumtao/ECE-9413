@@ -136,5 +136,16 @@ Plans:
 
 All 15 v1 requirements covered ✓
 
+### Phase 4: Incorporate peer optimizations and benchmark experimentally
+
+**Goal:** Port two peer optimizations (t=0/t=1 shortcut and evens/odds pre-computation) into `sumcheck_32`, benchmark each change against the Phase 3 baseline, and record results in `experiment.md` with git hash tracking.
+**Requirements:** OPT-01, OPT-02
+**Depends on:** Phase 3
+**Plans:** 2 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Apply t=0/t=1 shortcut, run all three benchmark tiers, fill Experiment 01 table (OPT-01)
+- [ ] 04-02-PLAN.md — Pre-compute evens/odds once per round, run all three benchmark tiers, fill Experiment 02 table (OPT-02)
+
 ---
 *Roadmap created: 2026-04-30*
