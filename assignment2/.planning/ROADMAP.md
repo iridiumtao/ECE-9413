@@ -144,8 +144,14 @@ All 15 v1 requirements covered ✓
 **Plans:** 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Apply t=0/t=1 shortcut, run all three benchmark tiers, fill Experiment 01 table (OPT-01)
-- [ ] 04-02-PLAN.md — Pre-compute evens/odds once per round, run all three benchmark tiers, fill Experiment 02 table (OPT-02)
+**Wave 1**
+- [x] 04-01-PLAN.md — Apply t=0/t=1 shortcut, run all three benchmark tiers, fill Experiment 01 table (OPT-01) (completed 2026-05-03, commits 86e0b5f 5e77307)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 04-02-PLAN.md — Pre-compute evens/odds once per round, run all three benchmark tiers, fill Experiment 02 table (OPT-02) (completed 2026-05-03, commits 2c31b3e f2c4ead)
+
+**Cross-cutting constraints:**
+- All 51 vars4 tests must pass after each code change before running benchmarks (D-07)
 
 ---
 *Roadmap created: 2026-04-30*
