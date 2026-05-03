@@ -95,3 +95,51 @@ Device: CPU (Apple Silicon, no GPU).
 | `a*b*c` | 9.968 | 6.508 | −3.460 ms (−34.7%) |
 
 ---
+
+## Experiment 02 — evens/odds pre-computation reuse
+
+**Git hash:** TBD
+
+**What changes:**
+- Pre-compute `evens = {var: tbl[::2] ...}` and `odds = {var: tbl[1::2] ...}` once per round
+- Use `evens[var]` / `odds[var]` in the v=0 and v=1 shortcut branches
+- Use `evens[var]` / `odds[var]` as arguments to `mle_update_32` for v >= 2
+- Use `evens[var]` / `odds[var]` in the fold step (replaces inline `tbl[::2]` and `tbl[1::2]`)
+
+**Hypothesis:** Eliminates repeated array slicing — each table is sliced exactly once per round regardless of degree or number of terms. Should show a small but consistent improvement for all expressions, most visible at high degree and large N.
+
+### Results — num-vars 4 (N=16)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | TBD | TBD | TBD | TBD |
+| `a*b` | TBD | TBD | TBD | TBD |
+| `a*b + c` | TBD | TBD | TBD | TBD |
+| `a*b*c` | TBD | TBD | TBD | TBD |
+
+### Results — num-vars 16 (N=65,536)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | TBD | TBD | TBD | TBD |
+| `a*b` | TBD | TBD | TBD | TBD |
+| `a*b + c` | TBD | TBD | TBD | TBD |
+| `a*b*c` | TBD | TBD | TBD | TBD |
+
+### Results — num-vars 20 (N=1,048,576)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | TBD | TBD | TBD | TBD |
+| `a*b` | TBD | TBD | TBD | TBD |
+| `a*b + c` | TBD | TBD | TBD | TBD |
+| `a*b*c` | TBD | TBD | TBD | TBD |
+
+### Delta vs Experiment 01 (N=20 median)
+
+| Expression | Exp 01 (ms) | Exp 02 (ms) | Delta |
+|---|---|---|---|
+| `a` | TBD | TBD | TBD |
+| `a*b` | TBD | TBD | TBD |
+| `a*b + c` | TBD | TBD | TBD |
+| `a*b*c` | TBD | TBD | TBD |

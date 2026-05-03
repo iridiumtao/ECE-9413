@@ -167,6 +167,9 @@ def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
     round_evals_list = []
 
     for i in range(num_rounds):
+        # Pre-compute evens/odds once per round; reused in the v-loop and fold step.
+        evens = {var: tbl[::2]  for var, tbl in tables.items()}
+        odds  = {var: tbl[1::2] for var, tbl in tables.items()}
         g_i_evals = []
 
         for v in range(degree + 1):
@@ -175,32 +178,22 @@ def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
             for term in expression:
                 if v == 0:
                     # t=0 shortcut: even-indexed entries are the zero-eval side directly.
-                    term_product = tables[term[0]][::2]
+                    term_product = evens[term[0]]
                     for var in term[1:]:
-                        factor = tables[var][::2]
-                        term_product = mod_mul_32(term_product, factor, q)
+                        term_product = mod_mul_32(term_product, evens[var], q)
                 elif v == 1:
                     # t=1 shortcut: odd-indexed entries are the one-eval side directly.
-                    term_product = tables[term[0]][1::2]
+                    term_product = odds[term[0]]
                     for var in term[1:]:
-                        factor = tables[var][1::2]
-                        term_product = mod_mul_32(term_product, factor, q)
+                        term_product = mod_mul_32(term_product, odds[var], q)
                 else:
                     # v >= 2: full linear interpolation required.
                     v_scalar = jnp.asarray(v, dtype=jnp.uint32)
                     term_product = mle_update_32(
-                        tables[term[0]][::2],
-                        tables[term[0]][1::2],
-                        v_scalar,
-                        q=q,
+                        evens[term[0]], odds[term[0]], v_scalar, q=q,
                     )
                     for var in term[1:]:
-                        factor = mle_update_32(
-                            tables[var][::2],
-                            tables[var][1::2],
-                            v_scalar,
-                            q=q,
-                        )
+                        factor = mle_update_32(evens[var], odds[var], v_scalar, q=q)
                         term_product = mod_mul_32(term_product, factor, q)
 
                 # Safe uint64 sum: up to 2^20 entries, each < q < 2^32, sum < 2^52 < 2^64.
@@ -211,12 +204,12 @@ def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
 
         round_evals_list.append(jnp.stack(g_i_evals))
 
-        # Fold all tables using challenges[i]; skip fold on the last round.
+        # Fold all tables using challenges[i]; reuses pre-computed evens/odds.
         if i < len(challenges):
             r = challenges[i]
             tables = {
-                var: mle_update_32(tbl[::2], tbl[1::2], r, q=q)
-                for var, tbl in tables.items()
+                var: mle_update_32(evens[var], odds[var], r, q=q)
+                for var in tables
             }
 
     round_evals = jnp.stack(round_evals_list)
