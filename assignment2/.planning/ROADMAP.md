@@ -107,8 +107,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Add JIT decorator to sumcheck_32, verify tests pass, run all three benchmarks (BENCH-01/02/03)
-- [ ] 03-02-PLAN.md — Run make_submission.sh, produce code.zip (SUB-01)
+- [x] 03-01-PLAN.md — Add JIT decorator to sumcheck_32, verify tests pass, run all three benchmarks (BENCH-01/02/03) (completed 2026-05-03, commits 463f10f c8d4a05)
+- [x] 03-02-PLAN.md — Run make_submission.sh, produce code.zip (SUB-01) (completed 2026-05-03, commits 6b59ac0 234c998)
 
 **UI hint:** no
 
