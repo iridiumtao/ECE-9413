@@ -104,6 +104,12 @@ Plans:
 2. Benchmark completes without error for all three problem sizes.
 3. `make_submission.sh` exits 0 and produces `code.zip`.
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Add JIT decorator to sumcheck_32, verify tests pass, run all three benchmarks (BENCH-01/02/03)
+- [ ] 03-02-PLAN.md — Run make_submission.sh, produce code.zip (SUB-01)
+
 **UI hint:** no
 
 ---
