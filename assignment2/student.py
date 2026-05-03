@@ -170,26 +170,38 @@ def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
         g_i_evals = []
 
         for v in range(degree + 1):
-            v_scalar = jnp.asarray(v, dtype=jnp.uint32)
             g_i_at_v = jnp.asarray(0, dtype=jnp.uint64)
 
             for term in expression:
-                first_var = term[0]
-                term_product = mle_update_32(
-                    tables[first_var][::2],
-                    tables[first_var][1::2],
-                    v_scalar,
-                    q=q,
-                )
-
-                for var in term[1:]:
-                    factor = mle_update_32(
-                        tables[var][::2],
-                        tables[var][1::2],
+                if v == 0:
+                    # t=0 shortcut: even-indexed entries are the zero-eval side directly.
+                    term_product = tables[term[0]][::2]
+                    for var in term[1:]:
+                        factor = tables[var][::2]
+                        term_product = mod_mul_32(term_product, factor, q)
+                elif v == 1:
+                    # t=1 shortcut: odd-indexed entries are the one-eval side directly.
+                    term_product = tables[term[0]][1::2]
+                    for var in term[1:]:
+                        factor = tables[var][1::2]
+                        term_product = mod_mul_32(term_product, factor, q)
+                else:
+                    # v >= 2: full linear interpolation required.
+                    v_scalar = jnp.asarray(v, dtype=jnp.uint32)
+                    term_product = mle_update_32(
+                        tables[term[0]][::2],
+                        tables[term[0]][1::2],
                         v_scalar,
                         q=q,
                     )
-                    term_product = mod_mul_32(term_product, factor, q)
+                    for var in term[1:]:
+                        factor = mle_update_32(
+                            tables[var][::2],
+                            tables[var][1::2],
+                            v_scalar,
+                            q=q,
+                        )
+                        term_product = mod_mul_32(term_product, factor, q)
 
                 # Safe uint64 sum: up to 2^20 entries, each < q < 2^32, sum < 2^52 < 2^64.
                 term_sum = jnp.sum(term_product.astype(jnp.uint64)) % jnp.asarray(q, dtype=jnp.uint64)
