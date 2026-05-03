@@ -9,6 +9,7 @@ dependencies = [
     "rich",
     "pytest",
     "sympy",
+    "modal>=1.4.2",
 ]
 
 [project.optional-dependencies]

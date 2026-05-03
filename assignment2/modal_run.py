@@ -84,17 +84,17 @@ def _run_sumcheck_impl(tests: bool, bench: bool, bits: int) -> None:
                 raise RuntimeError(f"Benchmark failed for num-vars {n}")
 
 
-@app.function(image=image, gpu="T4")
+@app.function(image=image, gpu="T4", timeout=900)
 def run_sumcheck_t4(tests: bool = True, bench: bool = True, bits: int = 32):
     return _run_sumcheck_impl(tests=tests, bench=bench, bits=bits)
 
 
-@app.function(image=image, gpu="A100")
+@app.function(image=image, gpu="A100", timeout=900)
 def run_sumcheck_a100(tests: bool = True, bench: bool = True, bits: int = 32):
     return _run_sumcheck_impl(tests=tests, bench=bench, bits=bits)
 
 
-@app.function(image=image, gpu="H100")
+@app.function(image=image, gpu="H100", timeout=900)
 def run_sumcheck_h100(tests: bool = True, bench: bool = True, bits: int = 32):
     return _run_sumcheck_impl(tests=tests, bench=bench, bits=bits)
 
