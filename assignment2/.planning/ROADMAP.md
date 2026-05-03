@@ -164,7 +164,7 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 05-01-PLAN.md — Create `modal_run.py` (app=ece9413-sumcheck, jax[cuda12], T4/A100/H100 GPU tiers, all three num-vars tiers per run) (GPU-01, PERF-02)
+- [x] 05-01-PLAN.md — Create `modal_run.py` (app=ece9413-sumcheck, jax[cuda12], T4/A100/H100 GPU tiers, all three num-vars tiers per run) (GPU-01, PERF-02) (completed 2026-05-03, commit ccf7dc5)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 05-02-PLAN.md — Checkout each git hash, run modal_run.py, record GPU output, write experiment_gpu.md with CPU vs GPU delta tables (GPU-02, PERF-02)

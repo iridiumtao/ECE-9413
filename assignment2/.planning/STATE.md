@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: active
-stopped_at: Phase 5 planned — 2 plans created, ready to execute
-last_updated: "2026-05-03T22:00:00.000Z"
+status: completed
+stopped_at: "Phase 5 plan 01 complete — modal_run.py created; Wave 2 (experiment_gpu.md) ready to execute"
+last_updated: "2026-05-03T21:45:55Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 8
-  completed_plans: 6
-  percent: 80
+  completed_plans: 7
+  percent: 87
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-30)
 
 **Core value:** Correctly produce `(claim0, round_evals)` that passes all required 32-bit base-polynomial tests on vars4, vars16, and vars20.
-**Current focus:** Phase 4 — incorporate peer optimizations and benchmark experimentally
+**Current focus:** Phase 5 — GPU Benchmarking with Modal
 
 ## Current Phase
 
-**Phase 4: Incorporate peer optimizations and benchmark experimentally**
+**Phase 5: GPU Benchmarking with Modal**
 
-Status: Complete (2026-05-03, 2 plans, 2 waves)
+Status: In Progress (plan 01 complete, plan 02 pending Modal auth)
 
 ## Phase Progress
 
@@ -36,7 +36,7 @@ Status: Complete (2026-05-03, 2 plans, 2 waves)
 | 2 | SumCheck Prover | Complete (2026-05-02) |
 | 3 | Optimization + Submission | Complete (2026-05-03) |
 | 4 | Incorporate peer optimizations and benchmark experimentally | Complete (2026-05-03) |
-| 5 | GPU Benchmarking with Modal | Planned (2 plans, ready to execute) |
+| 5 | GPU Benchmarking with Modal | In Progress (plan 01 complete, plan 02 pending) |
 
 ## Accumulated Context
 
@@ -53,6 +53,7 @@ Status: Complete (2026-05-03, 2 plans, 2 waves)
 - No jax.vmap in mle_update_32 — plain array ops already vectorized by JAX/XLA
 - D-05: expression converted to tuple-of-tuples in sumcheck() dispatcher so JIT static hashing succeeds — list[list[str]] is unhashable
 - D-06: JIT decorator placed on sumcheck_32; outer benchmark harness JIT inlines it (nested JIT, no double-compilation)
+- D-GPU-01 (Phase 5): app name 'ece9413-sumcheck'; delegate entirely to tests.benchmark via subprocess; single modal invocation runs all three num-vars tiers [4, 16, 20] sequentially
 
 ## Performance Metrics
 
@@ -61,6 +62,7 @@ Status: Complete (2026-05-03, 2 plans, 2 waves)
 | 01 | 01 | 1min | 2 | 1 |
 | 03 | 01 | 5min | 2 | 1 |
 | 03 | 02 | 3min | 1 | 1 |
+| 05 | 01 | 1min | 1 | 1 |
 
 ## Notes
 
@@ -72,8 +74,8 @@ Status: Complete (2026-05-03, 2 plans, 2 waves)
 
 ## Last Session
 
-**Stopped at:** Phase 5 planned — 2 plans created (05-01 Wave 1: modal_run.py, 05-02 Wave 2: experiment_gpu.md), ready to execute
-**Timestamp:** 2026-05-03T23:00:00Z
+**Stopped at:** Phase 5 plan 01 complete — modal_run.py created (ccf7dc5); Wave 2 (05-02-PLAN.md) ready for execution after Modal auth
+**Timestamp:** 2026-05-03T21:45:55Z
 
 ---
 *Initialized: 2026-04-30*
