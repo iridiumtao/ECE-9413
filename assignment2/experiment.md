@@ -98,7 +98,7 @@ Device: CPU (Apple Silicon, no GPU).
 
 ## Experiment 02 — evens/odds pre-computation reuse
 
-**Git hash:** TBD
+**Git hash:** `2c31b3ed2afefa129b5ce9d6bb5ad50d1aa786e2`
 
 **What changes:**
 - Pre-compute `evens = {var: tbl[::2] ...}` and `odds = {var: tbl[1::2] ...}` once per round
@@ -112,34 +112,34 @@ Device: CPU (Apple Silicon, no GPU).
 
 | Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
 |---|---|---|---|---|
-| `a` | TBD | TBD | TBD | TBD |
-| `a*b` | TBD | TBD | TBD | TBD |
-| `a*b + c` | TBD | TBD | TBD | TBD |
-| `a*b*c` | TBD | TBD | TBD | TBD |
+| `a` | ~103 | 0.014 | 0.016 | 1.09 |
+| `a*b` | ~177 | 0.019 | 0.022 | 0.85 |
+| `a*b + c` | ~240 | 0.022 | 0.030 | 0.73 |
+| `a*b*c` | ~289 | 0.021 | 0.048 | 0.75 |
 
 ### Results — num-vars 16 (N=65,536)
 
 | Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
 |---|---|---|---|---|
-| `a` | TBD | TBD | TBD | TBD |
-| `a*b` | TBD | TBD | TBD | TBD |
-| `a*b + c` | TBD | TBD | TBD | TBD |
-| `a*b*c` | TBD | TBD | TBD | TBD |
+| `a` | ~244 | 0.181 | 0.218 | 362 |
+| `a*b` | ~498 | 0.370 | 0.457 | 177 |
+| `a*b + c` | ~725 | 0.612 | 0.833 | 107 |
+| `a*b*c` | ~753 | 0.736 | 1.050 | 89 |
 
 ### Results — num-vars 20 (N=1,048,576)
 
 | Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
 |---|---|---|---|---|
-| `a` | TBD | TBD | TBD | TBD |
-| `a*b` | TBD | TBD | TBD | TBD |
-| `a*b + c` | TBD | TBD | TBD | TBD |
-| `a*b*c` | TBD | TBD | TBD | TBD |
+| `a` | ~283 | 1.091 | 1.445 | 961 |
+| `a*b` | ~578 | 3.800 | 4.152 | 275 |
+| `a*b + c` | ~800 | 5.538 | 6.598 | 189 |
+| `a*b*c` | ~912 | 6.667 | 7.317 | 157 |
 
 ### Delta vs Experiment 01 (N=20 median)
 
 | Expression | Exp 01 (ms) | Exp 02 (ms) | Delta |
 |---|---|---|---|
-| `a` | TBD | TBD | TBD |
-| `a*b` | TBD | TBD | TBD |
-| `a*b + c` | TBD | TBD | TBD |
-| `a*b*c` | TBD | TBD | TBD |
+| `a` | 1.145 | 1.091 | −0.054 ms (−4.7%) |
+| `a*b` | 3.864 | 3.800 | −0.064 ms (−1.7%) |
+| `a*b + c` | 5.241 | 5.538 | +0.297 ms (+5.7%) |
+| `a*b*c` | 6.508 | 6.667 | +0.159 ms (+2.4%) |
