@@ -192,3 +192,15 @@ Device: CPU (Apple Silicon, no GPU).
 | `a*b` | 3.864 | 2.887 | −0.977 ms (−25.3%) |
 | `a*b + c` | 5.241 | 4.848 | −0.393 ms (−7.5%) |
 | `a*b*c` | 6.508 | 5.050 | −1.458 ms (−22.4%) |
+
+### Advanced polynomials (`--enable-challenge32`) — num-vars 20
+
+Per D-08, exercise the v>=4 `mle_update_32` fallback for high-degree polys. Fills the report's §5.1 "repeated constituent polynomials" entry.
+
+**Correctness:** PASS — 35/35 cases passed (`uv run pytest --bits 32 --num-vars 20 --enable-challenge32`)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a*a*b*b*c` | ~1570 | 9.735 | 10.307 | 107.71 |
+| `a*b*c + d*e` | ~1200 | 7.852 | 8.866 | 133.55 |
+| `a*b*c*g + d*e*g` | ~2120 | 13.854 | 14.694 | 75.69 |
