@@ -40,6 +40,10 @@ Status: In Progress (plan 01 complete, plan 02 pending Modal auth)
 
 ## Accumulated Context
 
+### Pending Todos
+
+- `2026-05-04-experiment-structure-and-extra-credit-plan.md` — Set up experiment reproducibility structure and execute extra credit plan (git tags, env-var ablation flags, bench_ablation.py, advanced polynomials run, 64-bit, Barrett)
+
 ### Roadmap Evolution
 
 - Phase 4 added: Incorporate peer optimizations and benchmark experimentally
