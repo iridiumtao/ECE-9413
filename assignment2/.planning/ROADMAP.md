@@ -202,13 +202,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 06-01-PLAN.md — Revert student.py to Exp01, apply unused-var filter (OPT-03) + no-mul MLE shortcut for v=2/v=3 (OPT-04), commit Exp03 with vars4/16/20 tests green
+- [x] 06-01-PLAN.md — Revert student.py to Exp01, apply unused-var filter (OPT-03) + no-mul MLE shortcut for v=2/v=3 (OPT-04), commit Exp03 with vars4/16/20 tests green (completed 2026-05-04, commits 7090536 41864f2)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 06-02-PLAN.md — Run Exp03 CPU benchmarks, record in experiment.md, run --enable-challenge32 advanced polys (D-08), regenerate code.zip (D-09)
+- [x] 06-02-PLAN.md — Run Exp03 CPU benchmarks, record in experiment.md, run --enable-challenge32 advanced polys (D-08), regenerate code.zip (D-09) (completed 2026-05-04, commits 7064471 6b9905a 9977831)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 06-03-PLAN.md — Create scripts/bench_ablation.sh + scripts/plot_ablation.py, emit report/ablation_chart.png (REPORT-01)
+- [x] 06-03-PLAN.md — Create scripts/bench_ablation.sh + scripts/plot_ablation.py, emit report/ablation_chart.png (REPORT-01) (completed 2026-05-04, commits 4e75101 11498ba 9ba30b3)
 
 ---
 *Roadmap created: 2026-04-30*
