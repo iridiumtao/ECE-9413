@@ -161,8 +161,12 @@ def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
     """Compulsory 32-bit sumcheck path."""
     degree = max(len(term) for term in expression)
 
-    tables = {var: jnp.asarray(table, dtype=jnp.uint32)
-              for var, table in eval_tables.items()}
+    # OPT-03 (D-02): only materialize tables for variables actually used by the
+    # expression. tests/case_utils.py:31-61 always loads all 6 VARIABLE_NAMES
+    # regardless of the expression, so without this filter we slice and fold up
+    # to 5 unused 2^num_rounds tables every round.
+    used_vars = set().union(*expression)
+    tables = {v: jnp.asarray(eval_tables[v], dtype=jnp.uint32) for v in used_vars}
 
     round_evals_list = []
 
@@ -186,8 +190,36 @@ def sumcheck_32(eval_tables, *, q, expression, challenges, num_rounds):
                     term_product = odds[term[0]]
                     for var in term[1:]:
                         term_product = mod_mul_32(term_product, odds[var], q)
+                elif v == 2:
+                    # OPT-04 (D-04): no-mul MLE shortcut for v=2.
+                    # mle_update_32(z, o, 2) = z + 2*(o - z) = 2*o - z (mod q).
+                    # Single uint64 reduction avoids the chained mod_sub/mod_mul/mod_add
+                    # path of mle_update_32 (3 separate `% q` reductions).
+                    q64 = jnp.asarray(q, dtype=jnp.uint64)
+                    z64 = evens[term[0]].astype(jnp.uint64)
+                    o64 = odds[term[0]].astype(jnp.uint64)
+                    term_product = ((2*o64 + q64 - z64) % q64).astype(jnp.uint32)
+                    for var in term[1:]:
+                        z64_v = evens[var].astype(jnp.uint64)
+                        o64_v = odds[var].astype(jnp.uint64)
+                        factor = ((2*o64_v + q64 - z64_v) % q64).astype(jnp.uint32)
+                        term_product = mod_mul_32(term_product, factor, q)
+                elif v == 3:
+                    # OPT-04 (D-04): no-mul MLE shortcut for v=3.
+                    # mle_update_32(z, o, 3) = z + 3*(o - z) = 3*o - 2*z (mod q).
+                    # Shift by 2*q64 to keep the subtraction non-negative in uint64.
+                    q64 = jnp.asarray(q, dtype=jnp.uint64)
+                    z64 = evens[term[0]].astype(jnp.uint64)
+                    o64 = odds[term[0]].astype(jnp.uint64)
+                    term_product = ((3*o64 + 2*q64 - 2*z64) % q64).astype(jnp.uint32)
+                    for var in term[1:]:
+                        z64_v = evens[var].astype(jnp.uint64)
+                        o64_v = odds[var].astype(jnp.uint64)
+                        factor = ((3*o64_v + 2*q64 - 2*z64_v) % q64).astype(jnp.uint32)
+                        term_product = mod_mul_32(term_product, factor, q)
                 else:
-                    # v >= 2: full linear interpolation required.
+                    # v >= 4: full linear interpolation (used by --enable-challenge32 advanced polys).
+                    # D-05: shortcut deferred for v=4,5 until base-track Exp03 is confirmed.
                     v_scalar = jnp.asarray(v, dtype=jnp.uint32)
                     term_product = mle_update_32(
                         evens[term[0]], odds[term[0]], v_scalar, q=q,
