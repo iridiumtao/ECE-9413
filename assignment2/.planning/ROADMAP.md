@@ -169,5 +169,46 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 05-02-PLAN.md — Checkout each git hash, run modal_run.py, record GPU output, write experiment_gpu.md with CPU vs GPU delta tables (GPU-02, PERF-02)
 
+### Phase 6: Execute P0 optimizations — revert Exp01, filter unused tables, no-mul MLE shortcut, ablation benchmarks
+
+**Goal:** Restore the fastest known variant (Exp01), eliminate all wasted unused-variable fold work, implement the README-hinted no-mul MLE shortcut as a single-reduction uint64 expression for v=2 and v=3, run correctness and benchmarks to produce Exp03 data, and generate the ablation chart needed for the report.
+
+**Requirements:** OPT-03 (unused-var filter), OPT-04 (no-mul MLE), REPORT-01 (ablation chart)
+**Depends on:** Phase 4 (has all benchmark data); Phase 5 (GPU data)
+
+**Key tasks:**
+1. Tag Exp01 (`git tag exp01 86e0b5f`) and revert `student.py` to it (`git checkout exp01 -- student.py`). Verify with `uv run pytest --bits 32 --num-vars 4`.
+2. Filter `tables` to variables actually used by `expression` at `student.py:164-167`:
+   ```python
+   used_vars = set().union(*expression)
+   tables = {v: jnp.asarray(eval_tables[v], dtype=jnp.uint32) for v in used_vars}
+   ```
+3. Implement no-mul MLE specialization for `v=2` and `v=3` in the `v >= 2` branch (`student.py:189-197`) using single-reduction uint64 arithmetic — e.g. for v=2: `((2*o64 + q64 - z64) % q64).astype(uint32)`. Do **not** use chained `mod_add_32`/`mod_sub_32` calls (multiple reductions defeat the saving).
+4. Run full correctness suite: `uv run pytest --bits 32 --num-vars 4/16/20`.
+5. Run benchmarks on vars4/16/20 and record as Exp03 in `experiment.md` and optionally `experiment_gpu.md`.
+6. Run `--enable-challenge32` on advanced polynomials and record numbers (fills §5.1 "repeated constituent polynomials" question).
+7. Generate ablation bar chart (baseline / Exp01 / Exp03) and CPU vs GPU comparison table for the report.
+8. Re-run `bash scripts/make_submission.sh` to produce a final `code.zip` from the Exp03 state.
+
+**Success criteria:**
+1. `student.py` at the Exp03 state folds only the variables referenced by `expression` — confirmed by inspecting `tables` keys in a vars4 debug trace.
+2. No-mul specialization matches `mle_update_32` outputs for v=2 and v=3 on all vars4 test cases.
+3. All 51 vars4 + vars16 + vars20 correctness tests pass after both changes.
+4. Exp03 median latency for `a` at vars20 is below Exp01 (1.145 ms CPU), confirming the unused-var filter wins.
+5. Ablation chart exists with three bars per expression.
+6. `code.zip` produced from the Exp03 commit.
+
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 06-01-PLAN.md — Revert student.py to Exp01, apply unused-var filter (OPT-03) + no-mul MLE shortcut for v=2/v=3 (OPT-04), commit Exp03 with vars4/16/20 tests green
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 06-02-PLAN.md — Run Exp03 CPU benchmarks, record in experiment.md, run --enable-challenge32 advanced polys (D-08), regenerate code.zip (D-09)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 06-03-PLAN.md — Create scripts/bench_ablation.sh + scripts/plot_ablation.py, emit report/ablation_chart.png (REPORT-01)
+
 ---
 *Roadmap created: 2026-04-30*
