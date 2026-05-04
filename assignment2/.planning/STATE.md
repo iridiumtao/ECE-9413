@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: "Phase 5 plan 01 complete — modal_run.py created; Wave 2 (experiment_gpu.md) ready to execute"
-last_updated: "2026-05-03T21:45:55Z"
+status: executing
+stopped_at: Phase 6 context gathered
+last_updated: "2026-05-04T06:03:48.520Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
   total_plans: 8
   completed_plans: 7
-  percent: 87
+  percent: 88
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Status: In Progress (plan 01 complete, plan 02 pending Modal auth)
 
 - Phase 4 added: Incorporate peer optimizations and benchmark experimentally
 - Phase 5 added: GPU benchmarking with Modal
+- Phase 6 added: Execute P0 optimizations — revert Exp01, filter unused tables, no-mul MLE shortcut, ablation benchmarks
 
 ## Decisions
 
@@ -78,7 +79,7 @@ Status: In Progress (plan 01 complete, plan 02 pending Modal auth)
 
 ## Last Session
 
-**Stopped at:** Phase 5 plan 01 complete — modal_run.py created (ccf7dc5); Wave 2 (05-02-PLAN.md) ready for execution after Modal auth
+**Stopped at:** Phase 6 context gathered
 **Timestamp:** 2026-05-03T21:45:55Z
 
 ---
