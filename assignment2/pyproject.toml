@@ -21,3 +21,8 @@ tpu = ["jax[tpu]"]
 testpaths = ["tests"]
 addopts = "-q"
 pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10.9",
+]
