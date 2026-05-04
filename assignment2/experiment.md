@@ -143,3 +143,52 @@ Device: CPU (Apple Silicon, no GPU).
 | `a*b` | 3.864 | 3.800 | −0.064 ms (−1.7%) |
 | `a*b + c` | 5.241 | 5.538 | +0.297 ms (+5.7%) |
 | `a*b*c` | 6.508 | 6.667 | +0.159 ms (+2.4%) |
+
+---
+
+## Experiment 03 — unused-variable filter + no-mul MLE shortcut
+
+**Git hash:** `7090536734ee551f1ec2ebbc3bab37bca8a90724`
+
+**What changes:**
+- Filter unused variables: `used_vars = set().union(*expression)` at top of `sumcheck_32` body — only materializes tables for variables referenced by the expression (D-02/D-03). The pytest harness loads all 6 `VARIABLE_NAMES` regardless of expression (`tests/case_utils.py:31-61`), so without this filter we slice and fold up to 5 unused 2^N tables every round.
+- No-mul MLE shortcut for `v=2` and `v=3`: inline single-reduction uint64 expression (D-04). `v=2` uses `2*o - z`; `v=3` uses `3*o - 2*z`. Avoids the 3 chained `% q` reductions inside `mle_update_32`.
+- Reverted Exp02 evens/odds dict pre-compute (which caused a +15–21% GPU regression); base is Exp01.
+
+**Hypothesis:** The filter dominates the speedup at single-variable expressions (`a`) where 5 of 6 variables are wasted work; no-mul shortcut helps degree-2 and degree-3 cases where v=2 and v=3 rows previously paid full `mle_update_32` cost.
+
+### Results — num-vars 4 (N=16)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~83 | 0.014 | 0.016 | 1.16 |
+| `a*b` | ~145 | 0.016 | 0.017 | 1.03 |
+| `a*b + c` | ~194 | 0.022 | 0.024 | 0.72 |
+| `a*b*c` | ~249 | 0.021 | 0.023 | 0.77 |
+
+### Results — num-vars 16 (N=65,536)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~210 | 0.179 | 0.197 | 367 |
+| `a*b` | ~340 | 0.341 | 0.368 | 192 |
+| `a*b + c` | ~500 | 0.577 | 0.645 | 109 |
+| `a*b*c` | ~520 | 0.622 | 0.670 | 105 |
+
+### Results — num-vars 20 (N=1,048,576)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~300 | 1.071 | 1.248 | 978 |
+| `a*b` | ~450 | 2.887 | 3.236 | 364 |
+| `a*b + c` | ~650 | 4.848 | 5.339 | 216 |
+| `a*b*c` | ~660 | 5.050 | 5.406 | 208 |
+
+### Delta vs Experiment 01 (N=20 median)
+
+| Expression | Exp 01 (ms) | Exp 03 (ms) | Delta |
+|---|---|---|---|
+| `a` | 1.145 | 1.071 | −0.074 ms (−6.5%) |
+| `a*b` | 3.864 | 2.887 | −0.977 ms (−25.3%) |
+| `a*b + c` | 5.241 | 4.848 | −0.393 ms (−7.5%) |
+| `a*b*c` | 6.508 | 5.050 | −1.458 ms (−22.4%) |
