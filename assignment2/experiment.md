@@ -241,6 +241,70 @@ Medians are median-of-medians across 5 cases (v20_case32_0 through v20_case32_4)
 
 ---
 
+## Experiment 05 — deferred mod + no-mul shortcuts (t=2/t=3) + running-add (t≥4) + Barrett GPU
+
+**Git hash:** `0740ba7`
+
+**What changes:**
+- Keeps Exp03's unused-var filter, evens/odds precompute, t=0/t=1 shortcuts, and no-mul MLE for t=2 and t=3
+- Adopts deferred mod reduction from teammate v9: accumulate all terms in uint64, apply a single `% q` per t-point (not per term) — saves `N_terms − 1` mod reductions per t-point for multi-term expressions
+- Adopts running-add ONLY for t≥4: `diffs = odds − evens` once per round; `running[t] = running[t−1] + diffs`; replaces `mle_update_32` for t=4+ (saves 2 ops per element per advanced t-point)
+- No-mul shortcuts for t=2/t=3 are kept because they are faster than running-add for those points on CPU (single inline uint64 expression vs. separate diffs precompute + one mod_add per variable per t-point)
+- Barrett reduction helpers added; GPU path uses `_sumcheck_32_barrett_exp05` via adaptive dispatch (`_adaptive_dispatch_32_exp05`)
+
+**Hypothesis:** Deferred mod reduces `N_terms − 1` mod reductions per t-point for every multi-term expression; the full-benchmark runs have two additive terms (`a*b + c`) and one three-factor term (`a*b*c`), so the deferred-mod path saves 1 mod per t-point for `a*b + c`. Running-add for t≥4 saves 2 ops per element per advanced t-point, but t=2 and t=3 already use the no-mul shortcut, so running-add only activates when degree ≥ 4. Net prediction: moderate improvement across all multi-term expressions, marginal or neutral for `a` (single term, no extra mod reductions to defer).
+
+### Results — num-vars 4 (N=16)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~80 | 0.014 | 0.016 | 1.17 |
+| `a*b` | ~141 | 0.015 | 0.017 | 1.04 |
+| `a*b + c` | ~181 | 0.023 | 0.027 | 0.69 |
+| `a*b*c` | ~244 | 0.021 | 0.022 | 0.82 |
+
+### Results — num-vars 16 (N=65,536)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~190 | 0.174 | 0.195 | 384.09 |
+| `a*b` | ~311 | 0.332 | 0.376 | 201.80 |
+| `a*b + c` | ~419 | 0.590 | 0.657 | 118.73 |
+| `a*b*c` | ~467 | 0.667 | 0.709 | 104.22 |
+
+### Results — num-vars 20 (N=1,048,576)
+
+Medians are median-of-medians across 5 cases (per-expression focused runs: `--expr <expr>`).
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~259 | 0.976 | 1.112 | 1074.57 |
+| `a*b` | ~394 | 2.716 | 2.919 | 400.20 |
+| `a*b + c` | ~532 | 4.393 | 4.821 | 240.41 |
+| `a*b*c` | ~596 | 4.911 | 5.086 | 221.87 |
+
+### Delta vs Experiment 03 (N=20 median)
+
+| Expression | Exp 03 (ms) | Exp 05 (ms) | Delta |
+|---|---|---|---|
+| `a` | 1.071 | 0.976 | −0.095 ms (−8.9%) |
+| `a*b` | 2.887 | 2.716 | −0.171 ms (−5.9%) |
+| `a*b + c` | 4.848 | 4.393 | −0.455 ms (−9.4%) |
+| `a*b*c` | 5.050 | 4.911 | −0.139 ms (−2.8%) |
+
+### Analysis
+
+All four expressions improved over Exp03, making Exp05 a strict Pareto improvement on CPU:
+
+- `a*b + c` gained the most (−9.4%) — deferred mod removes one `% q` per t-point in the two-term accumulation path, and the single-term nature of each factor keeps the no-mul shortcuts active for t=2/t=3.
+- `a` gained −8.9% despite having only a single term and no deferred-mod benefit. The gain here is likely attributable to the JIT compilation and scheduling differences between `_sumcheck_32_exp05` and `_sumcheck_32_exp03`; at N=20 the loop overhead is relatively small compared to element-wise work.
+- `a*b` gained −5.9% and `a*b*c` gained −2.8%: both have exactly one multiplicative term (no deferred-mod savings over Exp03), so the improvement is small, consistent with minor code-path differences.
+- Running-add for t≥4 did not activate for these standard test cases (max degree is 3 for `a*b*c`), so that branch was untested in practice here. Its benefit will appear for advanced polynomials (`--enable-challenge32`).
+
+Comparing to Exp04 (which also borrowed from teammate v9): Exp05 keeps the no-mul shortcuts for t=2/t=3 that Exp04 dropped, and that is the main reason `a*b*c` recovered from +34% regression in Exp04 to −2.8% improvement in Exp05.
+
+---
+
 ## Ablation Chart (Report §5.4.1)
 
 See `report/ablation_chart.png` — grouped bar chart showing vars20 median latency for `a`, `a*b`, `a*b + c`, `a*b*c` across the three optimization states (baseline / Exp01 / Exp03).
