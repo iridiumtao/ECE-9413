@@ -362,7 +362,7 @@ def _sumcheck_32_exp05(eval_tables, *, q, expression, challenges, num_rounds):
 # throughout to avoid XLA IDIV on element-wise arrays (GPU-friendly).
 # -----------------------------------------------------------------------------
 
-@functools.partial(jax.jit, static_argnames=("expression", "num_rounds"))
+@functools.partial(jax.jit, static_argnames=("q", "expression", "num_rounds"))
 def _sumcheck_32_barrett_exp05(eval_tables, *, q, expression, challenges, num_rounds):
     """Exp05 GPU kernel: Barrett ops + deferred mod + no-mul shortcuts + running-add for t>=4."""
     degree = max(len(term) for term in expression)
