@@ -175,6 +175,64 @@ Aggregation: each expression has 5 test cases per num-vars tier; the table shows
 
 ---
 
+## Experiment 03 — unused-variable filter + no-mul MLE shortcut
+
+**Git hash:** `7090536734ee551f1ec2ebbc3bab37bca8a90724`
+
+**What changes:**
+- Filter unused variables: only materializes tables for variables referenced by the expression — eliminates up to 5 unused 2^N table slices and folds per round
+- No-mul MLE shortcut for `v=2` and `v=3`: inline single-reduction uint64 expression; `v=2` uses `2*o - z`, `v=3` uses `3*o - 2*z` — avoids 3 chained `% q` reductions inside `mle_update_32`
+- Reverted Exp02 evens/odds dict pre-compute (which caused +15–21% GPU regression); base is Exp01
+
+**Hypothesis:** The unused-variable filter dominates on CPU (5 of 6 variables are wasted work for `a`). On GPU, XLA already schedules unused branches cheaply, so the filter saves less. The no-mul shortcut may help `a*b*c` slightly by reducing arithmetic in v=2/v=3 rows.
+
+### Results — num-vars 4 (N=16)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~633 | 0.195 | 0.275 | 0.08 |
+| `a*b` | ~1573 | 0.196 | 0.273 | 0.08 |
+| `a*b + c` | ~2041 | 0.232 | 0.342 | 0.07 |
+| `a*b*c` | ~2769 | 0.282 | 0.366 | 0.06 |
+
+### Results — num-vars 16 (N=65,536)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~2048 | 0.367 | 0.449 | 178 |
+| `a*b` | ~2961 | 0.498 | 0.551 | 132 |
+| `a*b + c` | ~5057 | 0.756 | 0.811 | 87 |
+| `a*b*c` | ~4983 | 0.625 | 0.691 | 105 |
+
+### Results — num-vars 20 (N=1,048,576)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~2568 | 0.465 | 0.525 | 2254 |
+| `a*b` | ~3915 | 0.684 | 0.788 | 1533 |
+| `a*b + c` | ~6676 | 1.187 | 1.316 | 883 |
+| `a*b*c` | ~6422 | 1.136 | 1.231 | 923 |
+
+### Delta vs GPU Experiment 01 (N=20 median)
+
+| Expression | Exp 01 GPU (ms) | Exp 03 GPU (ms) | Delta |
+|---|---|---|---|
+| `a` | 0.464 | 0.465 | +0.001 ms (+0.2%) |
+| `a*b` | 0.712 | 0.684 | −0.028 ms (−3.9%) |
+| `a*b + c` | 1.176 | 1.187 | +0.011 ms (+0.9%) |
+| `a*b*c` | 1.258 | 1.136 | −0.122 ms (−9.7%) |
+
+### CPU vs GPU Delta (N=20 median)
+
+| Expression | CPU (ms) | GPU (ms) | Delta |
+|---|---|---|---|
+| `a` | 1.071 | 0.465 | −0.606 ms (−56.6%) |
+| `a*b` | 2.887 | 0.684 | −2.203 ms (−76.3%) |
+| `a*b + c` | 4.848 | 1.187 | −3.661 ms (−75.5%) |
+| `a*b*c` | 5.050 | 1.136 | −3.914 ms (−77.5%) |
+
+---
+
 ## Observations
 
 ### GPU vs CPU speedup
@@ -186,5 +244,6 @@ The T4 GPU provides dramatic speedups at N=20: 4–14× faster across the baseli
 |---|---|---|
 | t=0/t=1 shortcut (Exp01) | −66.6% | −11.3% |
 | evens/odds pre-computation (Exp02) | +5.7% (regression) | +17.3% (regression) |
+| unused-var filter + no-mul shortcut (Exp03) | −7.5% | +0.9% (neutral) |
 
-The t=0/t=1 shortcut provides a smaller but still positive speedup on GPU. The evens/odds pre-computation **regresses on GPU** for all expressions: pre-allocating dict-of-slices adds memory allocation overhead that outweighs the slice-reuse benefit, especially since XLA already schedules element-wise stride operations efficiently without intermediate buffers.
+The t=0/t=1 shortcut provides a smaller but still positive speedup on GPU. The evens/odds pre-computation **regresses on GPU** for all expressions: pre-allocating dict-of-slices adds memory allocation overhead that outweighs the slice-reuse benefit, especially since XLA already schedules element-wise stride operations efficiently without intermediate buffers. The unused-variable filter and no-mul shortcut are **neutral on GPU** for `a` and `a*b + c` (within noise), and provide a small improvement for `a*b*c` (−9.7%). The CPU-dominant savings from filtering unused variables do not transfer to GPU: XLA's kernel already skips inactive branches cheaply, so the filter adds overhead (dict lookup) without eliminating real GPU work.
