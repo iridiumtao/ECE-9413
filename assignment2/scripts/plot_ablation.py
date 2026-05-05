@@ -27,6 +27,7 @@ CPU_BASELINE = {"a": 2.098, "a*b": 6.571, "a*b + c": 15.693, "a*b*c": 9.968}
 CPU_EXP01    = {"a": 1.145, "a*b": 3.864, "a*b + c":  5.241, "a*b*c": 6.508}
 CPU_EXP02    = {"a": 1.091, "a*b": 3.800, "a*b + c":  5.538, "a*b*c": 6.667}
 CPU_EXP03    = {"a": 1.071, "a*b": 2.887, "a*b + c":  4.848, "a*b*c": 5.050}
+CPU_EXP04    = {"a": 1.021, "a*b": 3.476, "a*b + c":  4.630, "a*b*c": 6.766}
 
 # ── GPU results (experiment_gpu.md, Modal T4) ────────────────────────────────
 
@@ -34,6 +35,7 @@ GPU_BASELINE = {"a": 0.464, "a*b": 0.822, "a*b + c": 1.326, "a*b*c": 1.344}
 GPU_EXP01    = {"a": 0.464, "a*b": 0.712, "a*b + c": 1.176, "a*b*c": 1.258}
 GPU_EXP02    = {"a": 0.561, "a*b": 0.823, "a*b + c": 1.380, "a*b*c": 1.408}
 GPU_EXP03    = {"a": 0.465, "a*b": 0.684, "a*b + c": 1.187, "a*b*c": 1.136}
+GPU_EXP04    = {"a": 0.450, "a*b": 0.729, "a*b + c": 1.335, "a*b*c": 1.107}
 
 
 def _annotate_bars(ax, bars):
@@ -52,15 +54,16 @@ def _annotate_bars(ax, bars):
 
 def plot_cpu() -> Path:
     x = np.arange(len(EXPRESSIONS))
-    width = 0.20
+    width = 0.15
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    offsets = [-1.5, -0.5, 0.5, 1.5]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    offsets = [-2, -1, 0, 1, 2]
     datasets = [
         (CPU_BASELINE, "Baseline"),
         (CPU_EXP01,    "Exp01 (t=0/t=1 shortcut)"),
         (CPU_EXP02,    "Exp02 (evens/odds reuse)"),
         (CPU_EXP03,    "Exp03 (filter + no-mul)"),
+        (CPU_EXP04,    "Exp04 (diff-share + term-by-term)"),
     ]
     for (data, label), off in zip(datasets, offsets):
         bars = ax.bar(x + off * width, [data[e] for e in EXPRESSIONS], width, label=label)
@@ -84,15 +87,16 @@ def plot_cpu() -> Path:
 
 def plot_gpu() -> Path:
     x = np.arange(len(EXPRESSIONS))
-    width = 0.20
+    width = 0.15
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    offsets = [-1.5, -0.5, 0.5, 1.5]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    offsets = [-2, -1, 0, 1, 2]
     datasets = [
         (GPU_BASELINE, "Baseline"),
         (GPU_EXP01,    "Exp01 (t=0/t=1 shortcut)"),
         (GPU_EXP02,    "Exp02 (evens/odds reuse — regresses on GPU)"),
         (GPU_EXP03,    "Exp03 (filter + no-mul)"),
+        (GPU_EXP04,    "Exp04 (diff-share + term-by-term + Barrett)"),
     ]
     for (data, label), off in zip(datasets, offsets):
         bars = ax.bar(x + off * width, [data[e] for e in EXPRESSIONS], width, label=label)

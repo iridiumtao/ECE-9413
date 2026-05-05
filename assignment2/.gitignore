@@ -3,3 +3,4 @@
 __pycache__/
 tests/data/*.npz
 !tests/data/.gitkeep
+.idea/

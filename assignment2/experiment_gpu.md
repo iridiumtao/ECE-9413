@@ -233,6 +233,74 @@ Aggregation: each expression has 5 test cases per num-vars tier; the table shows
 
 ---
 
+## Experiment 04 — diff-share running-add + term-by-term sum + Barrett reduction (teammate v9/barrett_v9)
+
+**Git hash:** `8b31f02839e236c95fc06d4835d55db52247b11c`
+
+**What changes:**
+- No redundant full-table `claim0` scan: `claim0` is derived from `g_0(0) + g_0(1)` using the first round's evals (computed anyway) — eliminates one full 2^20-element pass (~33% fewer element-passes at vars=20)
+- Term-by-term scalar reduction: replaces `_compose_terms_u32` (zeros-init + per-element mod_add per term + full sum) with per-term reduction directly to a scalar accumulated in uint64 — no composed-polynomial array materialized
+- Running-add for t≥2 (diff-share): precomputes `diffs = odds − evens` once per round; for t=2,3,…,d, `vals[t] = vals[t−1] + diffs` — replaces `mle_update` (mul + sub + add) with a single mod_add per element
+- Barrett reduction (GPU path, `_sumcheck_32_barrett_v9`): precomputes `μ = ⌊2^64/q⌋` at Python/JIT time and replaces `% q` with `x − q * mulhi(x, μ) + corrective subtract` — avoids CUDA hardware `IDIV` (~20–40 cycles/op) that XLA cannot lower away on PTX
+
+**Hypothesis:** On CPU, eliminating the redundant `claim0` scan and avoiding the intermediate composed-polynomial array are the dominant wins. On GPU, Barrett reduction additionally removes the costly IDIV instruction; combined with diff-share, this should improve `a*b*c` most (more multiplies per element → more IDIV savings) and `a` least (single-term, no intermediate products).
+
+### Results — num-vars 20 (N=1,048,576)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~4,905 | 0.450 | — | 2,330 |
+| `a*b` | ~11,934 | 0.729 | — | 1,438 |
+| `a*b + c` | ~14,313 | 1.335 | — | 786 |
+| `a*b*c` | ~21,005 | 1.107 | — | 947 |
+
+Medians are median-of-medians across 5 cases (our T4 run). Compile times from teammate's reference sweep.
+
+### Delta vs GPU Experiment 03 (N=20 median)
+
+| Expression | Exp 03 GPU (ms) | Exp 04 GPU (ms) | Delta |
+|---|---|---|---|
+| `a` | 0.465 | 0.450 | −0.015 ms (−3.2%) |
+| `a*b` | 0.684 | 0.729 | +0.045 ms (+6.6%) |
+| `a*b + c` | 1.187 | 1.335 | +0.148 ms (+12.5%) |
+| `a*b*c` | 1.136 | 1.107 | −0.029 ms (−2.6%) |
+
+### CPU vs GPU Delta (N=20 median)
+
+CPU reference: teammate's `_sumcheck_32_v9` (same v9 logic without Barrett).
+
+| Expression | CPU v9 (ms) | GPU barrett_v9 (ms) | Delta |
+|---|---|---|---|
+| `a` | 1.626 | 0.450 | −1.176 ms (−72.3%) |
+| `a*b` | 4.247 | 0.729 | −3.518 ms (−82.8%) |
+| `a*b + c` | 6.777 | 1.335 | −5.442 ms (−80.3%) |
+| `a*b*c` | 8.516 | 1.107 | −7.409 ms (−87.0%) |
+
+### Analysis — why `a` and `a*b*c` improve but `a*b + c` regresses
+
+The four changes in Exp04 interact differently depending on number of terms and degree:
+
+**`claim0` scan elimination** — helps all expressions equally: skips one full 2^20-element sum by deriving `claim0 = g_0(0) + g_0(1)` from the first round.
+
+**Term-by-term scalar reduction** — the decisive factor for `a*b + c`. The baseline composes the full polynomial elementwise (`a*b + c` per element) and then calls one `jnp.sum`. XLA fuses this into a single kernel: one multiply + one add per element, then reduce. `_eval_sum_mod_barrett` instead loops over terms and calls a separate `jnp.sum` per term — for `a*b + c` (2 terms) that is **two independent GPU reductions per t-point** instead of one. Over 3 t-points × 20 rounds, this doubles the reduction kernel launch count (120 vs 60). GPU reduction kernels are not free to launch and cannot be pipelined when they are data-dependent; the fused single-pass is strictly cheaper. For single-term expressions (`a`, `a*b`, `a*b*c`) the loop visits exactly one term, so term-by-term is structurally identical to compose-then-sum — **no extra kernels, no regression**.
+
+**Running-add for t ≥ 2** — degree determines how many rounds benefit. `a*b*c` (degree 3) has t=2 and t=3 extra points, so 2 `mle_update` multiplications per round are replaced by cheap mod_adds. `a*b + c` (degree 2) only has t=2, so only 1 mle_update is saved — a smaller gain that cannot offset the kernel-launch regression above. `a` (degree 1) has no t≥2 points; running-add does not apply.
+
+**Barrett reduction** — helps proportionally to the number of multiplications per element per t-point. `a*b*c` has 2 multiplications per element (`a*b` then `*c`), so 2 CUDA IDIVs are replaced per element. `a*b + c` and `a*b` have 1 multiplication per element. `a` has none — Barrett contributes nothing for `a`.
+
+**Net effect by expression:**
+
+| Expression | Terms | Extra GPU reductions / round | Running-add savings | Barrett IDIVs / element | Net |
+|---|---|---|---|---|---|
+| `a` | 1 | 0 | none (deg 1) | 0 | claim0 scan is entire gain → −3.2% |
+| `a*b` | 1 | 0 | 1 mle_update (deg 2) | 1 | small gains roughly cancel overhead → neutral (+6.6%) |
+| `a*b + c` | **2** | **+3 per round** | 1 mle_update (deg 2) | 1 | **double-reduction overhead dominates → +12.5%** |
+| `a*b*c` | 1 | 0 | 2 mle_updates (deg 3) | 2 | multiple gains, no overhead → −2.6% |
+
+The regression on `a*b + c` is not a Barrett or diff-share problem — it is a direct consequence of applying a CPU optimization (avoid intermediate array allocation) to GPU, where the baseline's single fused compose+reduce kernel is already optimal. The same asymmetry explains why Exp02 (evens/odds dict) also regressed: both Exp02 and Exp04's term-by-term mode add Python-level structure (dicts, per-term loops) that breaks XLA's ability to fuse what would otherwise be a single kernel.
+
+---
+
 ## Observations
 
 ### GPU vs CPU speedup
@@ -245,5 +313,6 @@ The T4 GPU provides dramatic speedups at N=20: 4–14× faster across the baseli
 | t=0/t=1 shortcut (Exp01) | −66.6% | −11.3% |
 | evens/odds pre-computation (Exp02) | +5.7% (regression) | +17.3% (regression) |
 | unused-var filter + no-mul shortcut (Exp03) | −7.5% | +0.9% (neutral) |
+| diff-share + term-by-term sum + Barrett (Exp04) | — (teammate impl) | +12.5% (regression vs Exp03; +0.7% vs Baseline) |
 
 The t=0/t=1 shortcut provides a smaller but still positive speedup on GPU. The evens/odds pre-computation **regresses on GPU** for all expressions: pre-allocating dict-of-slices adds memory allocation overhead that outweighs the slice-reuse benefit, especially since XLA already schedules element-wise stride operations efficiently without intermediate buffers. The unused-variable filter and no-mul shortcut are **neutral on GPU** for `a` and `a*b + c` (within noise), and provide a small improvement for `a*b*c` (−9.7%). The CPU-dominant savings from filtering unused variables do not transfer to GPU: XLA's kernel already skips inactive branches cheaply, so the filter adds overhead (dict lookup) without eliminating real GPU work.

@@ -207,6 +207,40 @@ Per D-08, exercise the v>=4 `mle_update_32` fallback for high-degree polys. Fill
 
 ---
 
+## Experiment 04 — diff-share running-add + term-by-term sum + no redundant claim0 scan (teammate v9, CPU)
+
+**Git hash:** `8b31f02839e236c95fc06d4835d55db52247b11c` (teammate's repo, `_sumcheck_32_v9` variant)
+
+**What changes:**
+- No redundant full-table `claim0` scan: derives `claim0 = g_0(0) + g_0(1)` from the first round's evals (which are computed anyway) — eliminates one full 2^20-element pass at vars=20
+- Term-by-term scalar reduction: replaces `_compose_terms_u32` (zeros-init + per-element mod_add per term + full sum) with per-term `jnp.sum` accumulated in uint64 — no intermediate composed-polynomial array materialized
+- Running-add for t≥2 (diff-share): precomputes `diffs = odds − evens` once per round; `vals[t] = vals[t−1] + diffs` for t=2,3,…,d — replaces `mle_update_32` (mul + sub + add) with a single `mod_add_32` per element
+- No Barrett on CPU — XLA lowers `% q` for a compile-time constant to magic multiply + shift, so `% q` is already near-free on x86/Apple Silicon
+
+**Hypothesis:** Claim0 scan elimination saves ~33% of element-passes at vars=20 for all expressions. Term-by-term reduction avoids a temporary composed-polynomial array, benefiting multi-term expressions (`a*b + c`) most. Running-add for t≥2 should reduce work for degree-2 and degree-3 cases. However, Exp03's no-mul MLE shortcut (`2*o − z`, `3*o − 2*z`) is more efficient than running-add for degree ≤ 3 on CPU: it evaluates the extended point in one inline uint64 op, while running-add requires a separate `diffs` precomputation plus one `mod_add` per variable per t-point. The tradeoff favors term-by-term for multi-term expressions but disfavors running-add for high-degree single-term expressions.
+
+### Results — num-vars 20 (N=1,048,576)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~279 | 1.021 | 1.257 | 1027 |
+| `a*b` | ~523 | 3.476 | 3.653 | 302 |
+| `a*b + c` | ~702 | 4.630 | 5.333 | 226 |
+| `a*b*c` | ~776 | 6.766 | 7.437 | 155 |
+
+Medians are median-of-medians across 5 cases (v20_case32_0 through v20_case32_4). `a*b` case 1 had an elevated compile time (~1422 ms vs ~510 ms for the others) — cold-cache artefact; runtime was unaffected.
+
+### Delta vs Experiment 03 (N=20 median)
+
+| Expression | Exp 03 (ms) | Exp 04 (ms) | Delta |
+|---|---|---|---|
+| `a` | 1.071 | 1.021 | −0.050 ms (−4.7%) |
+| `a*b` | 2.887 | 3.476 | +0.589 ms (+20.4%) |
+| `a*b + c` | 4.848 | 4.630 | −0.218 ms (−4.5%) |
+| `a*b*c` | 5.050 | 6.766 | +1.716 ms (+34.0%) |
+
+---
+
 ## Ablation Chart (Report §5.4.1)
 
 See `report/ablation_chart.png` — grouped bar chart showing vars20 median latency for `a`, `a*b`, `a*b + c`, `a*b*c` across the three optimization states (baseline / Exp01 / Exp03).
