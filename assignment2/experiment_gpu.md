@@ -301,6 +301,89 @@ The regression on `a*b + c` is not a Barrett or diff-share problem — it is a d
 
 ---
 
+## Experiment 05 — deferred scalar reduction + no-mul shortcuts + Barrett GPU (Exp05 synthesis)
+
+**Git hash:** `0740ba7`
+
+**What changes (GPU-specific):**
+- Barrett reduction applied throughout the GPU path (`_sumcheck_32_barrett_exp05`): all element-wise multiplications use `_mod_mul_barrett_u32`; all additions use `_mod_add_branchless_u32`; fold step uses `_mle_update_barrett_u32`
+- No-mul MLE shortcuts for t=2 and t=3 kept: inline uint64 arithmetic `2*o − z` and `3*o − 2*z` avoid `mle_update_32` (with its three chained `% q` reductions) for the two lowest degree-extension points
+- Running-add for t ≥ 4: `diffs = odds − evens` computed once per round; each subsequent t-point advances the running table via `_mod_add_branchless_u32` — avoids one `_mod_mul_barrett_u32` per element per extra t-point
+- Deferred scalar reduction: all terms for a given t-point are accumulated in a raw `uint64` scalar; a single `_barrett_reduce_u64_to_u32` call is applied at the end of each t-point's loop, instead of one Barrett reduce per term per t-point
+- `q` added to `static_argnames` of `@jax.jit` so `int(q)` and `_barrett_mu_64` execute at trace time (required fix for Modal GPU; `q` is a fixed prime so static is correct)
+
+**Hypothesis:** Deferred scalar reduction keeps per-t-point reduction to a single Barrett call regardless of the number of terms. This should avoid the double-reduction kernel overhead that caused the Exp04 regression on `a*b + c`. Barrett removes CUDA IDIV throughout, helping `a*b*c` most. Running-add saves one Barrett multiply per extra t-point for degree ≥ 4 expressions.
+
+### Results — num-vars 4 (N=16)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~862 | 0.169 | 0.230 | 0.09 |
+| `a*b` | ~2449 | 0.185 | 0.227 | 0.09 |
+| `a*b + c` | ~2110 | 0.225 | 0.267 | 0.07 |
+| `a*b*c` | ~4876 | 0.209 | 0.255 | 0.08 |
+
+### Results — num-vars 16 (N=65,536)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~3683 | 0.331 | 0.422 | 198 |
+| `a*b` | ~8235 | 0.449 | 0.513 | 146 |
+| `a*b + c` | ~10454 | 0.803 | 0.875 | 82 |
+| `a*b*c` | ~15985 | 0.524 | 0.631 | 125 |
+
+### Results — num-vars 20 (N=1,048,576)
+
+| Expression | Compile (ms) | Median (ms) | p90 (ms) | Mpts/s |
+|---|---|---|---|---|
+| `a` | ~4799 | 0.445 | 0.519 | 2354 |
+| `a*b` | ~10658 | 0.807 | 0.923 | 1299 |
+| `a*b + c` | ~12138 | 1.420 | 1.632 | 738 |
+| `a*b*c` | ~14586 | 1.210 | 1.289 | 867 |
+
+### Delta vs GPU Experiment 03 (N=20 median)
+
+| Expression | Exp 03 GPU (ms) | Exp 05 GPU (ms) | Delta |
+|---|---|---|---|
+| `a` | 0.465 | 0.445 | −0.020 ms (−4.3%) |
+| `a*b` | 0.684 | 0.807 | +0.123 ms (+18.0%) |
+| `a*b + c` | 1.187 | 1.420 | +0.233 ms (+19.6%) |
+| `a*b*c` | 1.136 | 1.210 | +0.074 ms (+6.5%) |
+
+### CPU vs GPU Delta (N=20 median, both Exp05)
+
+CPU reference: `_sumcheck_32_exp05` (Exp05 CPU path — same deferred-mod + no-mul + running-add, without Barrett).
+
+| Expression | CPU Exp05 (ms) | GPU Exp05 (ms) | Delta |
+|---|---|---|---|
+| `a` | 1.077 | 0.445 | −0.632 ms (−58.7%) |
+| `a*b` | 2.605 | 0.807 | −1.798 ms (−69.0%) |
+| `a*b + c` | 4.295 | 1.420 | −2.875 ms (−66.9%) |
+| `a*b*c` | 4.968 | 1.210 | −3.758 ms (−75.6%) |
+
+### Analysis — GPU-specific behavior and comparison with Exp04
+
+**Deferred scalar reduction did not fix the `a*b + c` regression.**
+
+The key insight from Exp04's analysis was that applying per-term `jnp.sum` (two independent GPU reductions per t-point for `a*b + c`) doubled kernel launch count. Exp05's deferred scalar reduction addresses this: instead of calling `_barrett_reduce_u64_to_u32` once per term (and implicitly per kernel call), it accumulates all term sums in a raw `uint64` scalar and applies a single Barrett reduce at the end of each t-point's loop.
+
+However, the regression persists — `a*b + c` is 19.6% slower than Exp03, worse even than Exp04's 12.5% regression. The explanation is that the deferred reduction only eliminates term-level Barrett reductions of the final scalar (a scalar, not an array). The actual GPU kernel bottleneck is not the per-term scalar Barrett reduce but the structure of the per-element computation loop:
+
+- Exp03 (baseline for comparison): `mle_update_32` composes the t-point value per element inline using `% q`; XLA fuses this into a single element-wise kernel, then one `jnp.sum`.
+- Exp05 Barrett GPU: for each t-point, iterates over terms; for each term, calls `_mod_mul_barrett_u32` per element, then `jnp.sum` as a scalar accumulation step. For `a*b + c` (2 terms), this is still two per-element kernel passes + two `jnp.sum` reductions per t-point, separated by the Python loop.
+
+**Why `a*b + c` regresses further than Exp04:**
+
+Exp04 used `_eval_sum_mod_barrett` which also accumulated per-term in uint64, but this still issued two independent reductions. Exp05's Barrett path uses the same term-loop structure. The additional regression vs Exp04 (+0.085 ms) likely comes from added compile time and the fact that Exp05 uses Barrett multiplications for the t=0 and t=1 shortcut paths (`_mod_mul_barrett_u32` for multi-variable terms), whereas Exp04 used plain uint32 multiplication for those paths. The higher compile time (~12,138 ms vs ~14,313 ms for Exp04 on `a*b + c`) may also reflect a more complex XLA computation graph.
+
+**`a` improves slightly (−4.3%):** Single-term, no intermediate products; Barrett reduces one IDIV per fold step.
+
+**`a*b*c` regresses moderately (+6.5%):** Three-variable degree-3 expression; more Barrett multiplications per element should help, but the additional GPU kernel overhead from Barrett ops vs XLA's native fused `% q` on PTX outweighs the IDIV savings for this T4.
+
+**CPU vs GPU speedup:** GPU provides 2–4× speedup across expressions at N=20. The speedup is lower than the baseline's 4–14× range because Exp05's CPU path (`_sumcheck_32_exp05`) is itself significantly optimized (deferred mod + no-mul shortcuts reduce CPU time vs. Exp03 by 30–50%). As the CPU path improves, the GPU advantage shrinks unless the GPU path also improves proportionally.
+
+---
+
 ## Observations
 
 ### GPU vs CPU speedup
@@ -314,5 +397,6 @@ The T4 GPU provides dramatic speedups at N=20: 4–14× faster across the baseli
 | evens/odds pre-computation (Exp02) | +5.7% (regression) | +17.3% (regression) |
 | unused-var filter + no-mul shortcut (Exp03) | −7.5% | +0.9% (neutral) |
 | diff-share + term-by-term sum + Barrett (Exp04) | — (teammate impl) | +12.5% (regression vs Exp03; +0.7% vs Baseline) |
+| deferred scalar reduction + no-mul + Barrett (Exp05) | −16.0% (CPU win) | +19.6% (regression vs Exp03) |
 
 The t=0/t=1 shortcut provides a smaller but still positive speedup on GPU. The evens/odds pre-computation **regresses on GPU** for all expressions: pre-allocating dict-of-slices adds memory allocation overhead that outweighs the slice-reuse benefit, especially since XLA already schedules element-wise stride operations efficiently without intermediate buffers. The unused-variable filter and no-mul shortcut are **neutral on GPU** for `a` and `a*b + c` (within noise), and provide a small improvement for `a*b*c` (−9.7%). The CPU-dominant savings from filtering unused variables do not transfer to GPU: XLA's kernel already skips inactive branches cheaply, so the filter adds overhead (dict lookup) without eliminating real GPU work.
