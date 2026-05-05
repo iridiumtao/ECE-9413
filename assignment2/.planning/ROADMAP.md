@@ -210,5 +210,23 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 06-03-PLAN.md — Create scripts/bench_ablation.sh + scripts/plot_ablation.py, emit report/ablation_chart.png (REPORT-01) (completed 2026-05-04, commits 4e75101 11498ba 9ba30b3)
 
+### Phase 7: Exp05: incorporate teammate v9 optimizations — learn from Exp01–Exp03 baseline, merge Exp04 gains, benchmark on local CPU and Modal T4 GPU, update charts if improved
+
+**Goal:** Create Exp05 as a deliberate synthesis of our Exp03 and teammate's v9 — keeping what Exp03 does well and incorporating v9's gains that don't regress. Run correctness tests, benchmark on local CPU and Modal T4 GPU, record results, and update the ablation chart if Exp05 beats Exp03.
+**Requirements:** EXP05-01, EXP05-02, EXP05-03, EXP05-04, EXP05-05
+**Depends on:** Phase 6
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 07-01-PLAN.md — Create exp05 branch, implement _sumcheck_32_exp05 (deferred mod + no-mul t=2/t=3 + running-add t>=4) + _sumcheck_32_barrett_exp05 + adaptive dispatch, run correctness tests (EXP05-01, EXP05-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 07-02-PLAN.md — Run CPU benchmark suite (vars4/16/20), record Exp05 results in experiment.md (EXP05-03)
+- [ ] 07-03-PLAN.md — Run Modal T4 GPU benchmark, record Exp05 GPU results in experiment_gpu.md (EXP05-04)
+
+**Wave 3** *(blocked on Wave 2 + Wave 3 completion)*
+- [ ] 07-04-PLAN.md — Update scripts/plot_ablation.py with Exp05 data, regenerate ablation charts (EXP05-05)
+
 ---
 *Roadmap created: 2026-04-30*
